@@ -1,0 +1,319 @@
+#ifndef __INJECTION__
+#define __INJECTION__
+
+#include "common.h" //Use here ONLY the things required for defining the struct (i.e. common.h for the ErrorMsg)
+
+/**
+ * All injection parameters and evolution that other modules need to know.
+ */
+enum PBH_accretion_approx {spherical_accretion, disk_accretion};
+enum f_eff_approx {f_eff_on_the_spot, f_eff_from_file, DarkAges};
+enum chi_approx {chi_CK, chi_PF, chi_Galli_file, chi_Galli_analytic, chi_full_heating, chi_from_x_file, chi_from_z_file, no_factorization};
+
+struct injection{
+
+  /** @name - input parameters initialized by user in input module (all other quantities are computed in this module,
+   *   given these parameters and the content of the 'precision', 'background' and 'thermodynamics' structs) */
+
+  //@{
+
+  /* Exotic energy injection parameters */
+  double DM_annihilation_efficiency;
+  double DM_annihilation_cross_section;
+  double DM_annihilation_mass;
+  double DM_annihilation_fraction;
+  double DM_annihilation_variation;
+  double DM_annihilation_z;
+  double DM_annihilation_zmax;
+  double DM_annihilation_zmin;
+  double DM_annihilation_f_halo;
+  double DM_annihilation_z_halo;
+
+  double DM_decay_fraction;
+  double DM_decay_Gamma;
+  double DM_decay_mass;
+  short DM_decay_table_uses_undepleted_rate; /**< built-in DarkAges decay tables are normalized to rho_cdm f_chi Gamma */
+  double DM_decay_table_max_z; /**< largest physical deposition redshift in the DarkAges table (CLASS z convention) */
+
+  double PBH_evaporation_fraction;
+  double PBH_evaporation_mass;
+
+  double PBH_accretion_fraction;
+  double PBH_accretion_mass;
+  enum PBH_accretion_approx PBH_accretion_recipe;
+  double PBH_accretion_relative_velocities;
+  double PBH_accretion_ADAF_delta;
+  double PBH_accretion_eigenvalue;
+
+  /* Injection efficiency */
+  int f_eff_type;
+  FileName f_eff_file;
+
+  /* Parameters related to calling an external code to calculate f(z) */
+  short fz_is_extern; /**< flag to specify if the fz_functions are given in a file or are calculated externally */
+  FileName  command_fz;  /**< string with the command for calling 'external_fz' */
+  double param_fz_1;  /**< one parameter used in 'external_fz' */
+  double param_fz_2;  /**< one parameter used in 'external_fz' */
+  double param_fz_3;  /**< one parameter used in 'external_fz' */
+  double param_fz_4;  /**< one parameter used in 'external_fz' */
+  double param_fz_5;  /**< one parameter used in 'external_fz' */
+
+
+  /* Deposition function and injection efficiency */
+  int chi_type;
+  FileName chi_z_file;
+  FileName chi_x_file;
+  FileName reio_stars_photoion_file;
+  FileName reio_stars_photoheat_file;
+
+  //@}
+
+
+  /** @name - Imported parameters */
+
+  //@{
+
+  /* Parameters from precision structure */
+  int Nz_size;
+  double z_initial;
+  double z_start_chi_approx;
+
+  /* Parameters from background structure */
+  /* Redshift independent, i.e. defined in injection_init */
+  double H0;
+  double T_g0;
+  double Omega0_b;
+  double Omega0_cdm;
+  double rho0_cdm;
+  /* Redshift dependent, i.e. defined in injection_calculate_at_z */
+  double H;
+  double a;
+  double t;
+  double rho_g;
+  double rho_b;
+  double rho_cdm;
+
+  /* Parameters from thermodynamics structure */
+  /* Redshift independent, i.e. defined in injection_init */
+  double fHe;
+  double N_e0;
+  /* Redshift dependent, i.e. defined in injection_calculate_at_z */
+  double heat_capacity;
+  short include_reio_stars_cooling_terms;
+  double T_b;
+  double x_e;
+  double nH;
+
+  //@}
+
+  /** @name - Public tables and parameters */
+
+  //@{
+
+  /* Redshift tables */
+  double* z_table;
+  int z_size;
+
+  double tol_z_table;
+  int filled_until_index_z;
+  double filled_until_z;
+
+  int last_index_z_feff;
+  int last_index_z_chi;
+  int last_index_z_inj;
+  int last_index_z;
+
+  int index_z_store;
+
+  /* X_e table */
+  int last_index_x_chi;
+
+  /* PBH mass evolution table and PBH free parameters */
+  double PBH_z_evaporation;
+  double PBH_QCD_activation;
+  double * PBH_table_z;
+  double * PBH_table_mass;
+  double * PBH_table_mass_dd;
+  double * PBH_table_F;
+  double * PBH_table_F_dd;
+  int Nz_PBH;
+
+  /* Energy injection table */
+  double** injection_table;
+  int index_inj_cool;
+  int index_inj_diss;
+  int index_inj_DM_ann;
+  int index_inj_DM_dec;
+  int index_inj_PBH_eva;
+  int index_inj_PBH_acc;
+  int index_inj_tot;
+  int inj_size;                  /** All contributions + total */
+
+  /* Injection efficiency table */
+  double f_eff;
+  int feff_z_size;
+  double* feff_table;
+
+  /* Deposition function tables */
+  double* chiz_table;
+  int chiz_size;
+  short has_lowz_interpolation_handoff; /**< low-z DarkAges rows use linear interpolation below this boundary */
+  double lowz_interpolation_handoff_z; /**< first high-z table node, in the CLASS physical-z convention */
+  double* chix_table;
+  int chix_size;
+
+  double** deposition_table; /* The table of energy depositions into the IGM of different deposition types */
+  double* chi;
+  int index_dep_heat;
+  int index_dep_ionH;
+  int index_dep_ionHe;
+  int index_dep_lya;
+  int index_dep_lowE;
+  int dep_size;
+
+  double* stars_photoheat_table; /* The table of energy depositions into the IGM of different deposition types */
+  double* stars_photoheat_rate;
+  double* stars_photoion_table; /* The table of energy depositions into the IGM of different deposition types */
+  double* stars_photoion_rate;
+  int index_stars_dep_H;
+  int index_stars_dep_HeI;
+  int index_stars_dep_HeII;
+  int stars_photoheat_dep_size;
+  int stars_photoion_dep_size;
+  int last_index_stars_photoion;
+  int last_index_stars_photoheat;
+  int stars_photoion_z_size;
+  int stars_photoheat_z_size;
+
+  /* Energy deposition vector */
+  double* pvecdeposition;
+
+  //@}
+
+  /** @name - Flags and technical parameters */
+
+  //@{
+
+  /* Flags */
+  int has_exotic_injection;
+  int include_reionization_from_stars;
+
+  int has_DM_ann;
+  int has_DM_dec;
+  int has_PBH_eva;
+  int has_PBH_acc;
+
+  int to_store;
+
+  /* Book-keeping */
+  short injection_verbose; /**< flag regulating the amount of information sent to standard output (none if set to zero) */
+
+  ErrorMsg error_message;
+
+  //@}
+};
+
+
+
+
+/**************************************************************/
+
+/* @cond INCLUDE_WITH_DOXYGEN */
+/*
+ * Boilerplate for C++
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+  /* Allocate, define indeces for and free injection tables */
+  int injection_init(struct precision * ppr,
+                     struct background* pba,
+                     struct thermodynamics* pth);
+
+  int injection_indices(struct thermodynamics* pth);
+
+  int injection_free(struct thermodynamics* pth);
+
+  /* Main functions */
+  int injection_calculate_at_z(struct background* pba,
+                               struct thermodynamics* pth,
+                               double x,
+                               double z,
+                               double Tmat,
+                               double x_H,
+                               double x_He,
+                               double* pvecback);
+
+  int injection_energy_injection_at_z(struct injection* phe,
+                                      double z,
+                                      double* dEdt_inj);
+
+  int injection_deposition_function_at_z(struct injection* phe,
+                                         double x,
+                                         double z);
+  int injection_energy_injection_from_stars_at_z(struct injection* phe,
+                                          struct thermodynamics* pth,
+                                         double z,
+                                         double x_H,
+                                         double x_He);
+
+  int injection_deposition_at_z(struct thermodynamics* pth,
+                                double z);
+
+  /* injection functions */
+  int injection_rate_DM_annihilation(struct injection * phe,
+                                     double z,
+                                     double * energy_rate);
+
+  int injection_rate_DM_decay(struct injection * phe,
+                              double z,
+                              double * energy_rate);
+
+  int injection_rate_DM_decay_for_deposition(struct injection * phe,
+                                             double z,
+                                             double * energy_rate);
+
+  int injection_rate_PBH_evaporation_mass_evolution(struct background * pba,
+                                                    struct injection * phe);
+
+  int injection_rate_PBH_evaporation(struct injection * phe,
+                                     double z,
+                                     double * energy_rate);
+
+  int injection_rate_PBH_accretion(struct injection * phe,
+                                   double z,
+                                   double * energy_rate);
+
+  /* Injection efficiency */
+  int injection_read_feff_from_file(struct precision* ppr,
+                                     struct injection* phe,
+                                     char* f_eff_file);
+
+  /* Deposition function */
+  int injection_read_chi_z_from_file(struct precision* ppr,
+                                     struct injection* phe,
+                                     char* chi_z_file);
+
+  int injection_read_chi_x_from_file(struct precision* ppr,
+                                     struct injection* phe,
+                                     char* chi_x_file);
+  int injection_read_stars_photoion_from_file(struct precision* ppr,
+                                     struct injection* phe,
+                                     char* reio_stars_photoion_file);
+  int injection_read_stars_photoheat_from_file(struct precision* ppr,
+                                     struct injection* phe,
+                                     char* reio_stars_photoheat_file);
+
+  int injection_output_titles(struct injection* phe,
+                              char titles[_MAXTITLESTRINGLENGTH_]);
+
+  int injection_output_data(struct injection * phe,
+                            int number_of_titles,
+                            double * data);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
